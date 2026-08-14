@@ -1,0 +1,7 @@
+pandas
+numpy
+langchain
+langgraph
+Groq
+langchain_groq
+dotenv
