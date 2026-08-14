@@ -5,6 +5,7 @@ import operator
 class AnalystState(TypedDict):
     input: str
     dataset_path: str
+    cleaned_dataset_path: str
     dataset_context: str
     plan: List[str]
     past_steps: Annotated[
