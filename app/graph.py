@@ -4,17 +4,21 @@ from app.state import AnalystState
 from app.nodes.planner import planner_node
 from app.nodes.executor import executor_node
 from app.nodes.reviewer import reviewer_node
+from app.nodes.cleaner import Cleaner_node
 
 graph = StateGraph(AnalystState)
 
 graph.add_node("Planner", planner_node)
+graph.add_node("Cleaner", Cleaner_node)
 graph.add_node("Executor", executor_node)
 graph.add_node("Reviewer", reviewer_node)
 
 
 graph.add_edge(START, "Planner")
-graph.add_edge("Planner", "Executor")
+graph.add_edge("Planner", "Cleaner")
+graph.add_edge("Cleaner", "Executor")
 graph.add_edge("Executor", "Reviewer")
+
 
 def should_end(state: AnalystState):
 
@@ -27,7 +31,7 @@ graph.add_conditional_edges(
     "Reviewer",
     should_end,
     {
-        "END": END,
+        "END":END,
         "Executor": "Executor"
     }
 )
