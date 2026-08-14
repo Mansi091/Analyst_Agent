@@ -16,13 +16,12 @@ def execute_pandas(code: str) -> str:
     """
 
     try:
-        # Resolve the absolute path of the dataset for Windows-Docker compatibility
-        dataset_abs_path = os.path.abspath("data/nigeria_messy_sales_dataset.csv")
+        # Resolve the absolute path of the data directory for Windows-Docker compatibility
+        data_dir_abs_path = os.path.abspath("data")
 
-        # Prepend pandas import and pre-load the dataset as 'df'
+        # Prepend pandas import (the agent writes its own pd.read_csv)
         full_code = (
             "import pandas as pd\n"
-            "df = pd.read_csv('nigeria_messy_sales_dataset.csv')\n"
             f"{code}"
         )
 
@@ -66,10 +65,9 @@ def execute_pandas(code: str) -> str:
                 # Allow stdin so we can send Python code
                 "-i",
 
-                # Mount only the dataset, read-only
-                "-v",
-                f"{dataset_abs_path}:/sandbox/nigeria_messy_sales_dataset.csv:ro",
-
+                # Mount the entire data directory, read-write
+                "-v", f"{data_dir_abs_path}:/sandbox/data",
+            
                 # Sandbox image
                 "pandas-sandbox",
             ],
