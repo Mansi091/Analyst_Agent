@@ -1,51 +1,79 @@
+import os
+import pandas as pd
 from app.graph import graph
 
 
+def discover_dataset(path: str) -> str:
+    """Auto-read a CSV and generate a schema description."""
+    df = pd.read_csv(path, nrows=5)
+    lines = [f"File: {os.path.basename(path)}", "", "Columns:"]
+    for col in df.columns:
+        dtype = str(df[col].dtype)
+        sample = df[col].dropna().iloc[0] if not df[col].dropna().empty else "N/A"
+        lines.append(f"- {col} ({dtype}): e.g. {sample}")
+    lines.append(f"\nTotal rows (sample): {len(pd.read_csv(path))}")
+    return "\n".join(lines)
+
+
 def main():
+    # --- Step 1: Find CSV files in the data/ directory ---
+    data_dir = "data"
+    if not os.path.exists(data_dir):
+        print(f"Error: '{data_dir}/' directory not found. Please create it and add a CSV file.")
+        return
 
-    user_query = (
-        "Identify the top 3 states by total sales. Also, check the dataset for "
-        "any data quality issues (like missing values) and explain how they might affect the analysis."
-    )
+    csv_files = [f for f in os.listdir(data_dir) if f.endswith(".csv")]
+    if not csv_files:
+        print(f"Error: No CSV files found in '{data_dir}/'.")
+        return
 
+    # --- Step 2: Let user pick a dataset ---
+    print("Available datasets:")
+    for i, f in enumerate(csv_files, 1):
+        print(f"  {i}. {f}")
+
+    if len(csv_files) == 1:
+        choice = 1
+        print(f"\nAuto-selected: {csv_files[0]}")
+    else:
+        choice = int(input("\nSelect dataset number: "))
+
+    dataset_filename = csv_files[choice - 1]
+    dataset_path = f"data/{dataset_filename}"
+
+    # --- Step 3: Auto-detect schema ---
+    print(f"\nReading schema from {dataset_path}...")
+    dataset_context = discover_dataset(dataset_path)
+    print(dataset_context)
+
+    # --- Step 4: Generate cleaned path ---
+    name, ext = os.path.splitext(dataset_filename)
+    cleaned_filename = f"{name}_cleaned{ext}"
+    cleaned_dataset_path = f"data/{cleaned_filename}"
+
+    # --- Step 5: Get user question ---
+    print()
+    user_query = input("Ask a question about this dataset: ")
+
+    # --- Step 6: Run the agent ---
     initial_state = {
         "input": user_query,
-
-        "dataset_path": "data/nigeria_messy_sales_dataset.csv",
-
-        "dataset_context": """
-        File: nigeria_messy_sales_dataset.csv
-
-        Columns:
-        - Customer Name: Name of the customer
-        - State: The Nigerian state where the sale occurred
-        - Product: The item purchased
-        - Units Sold: Number of units purchased
-        - Unit Price: Price per unit
-        - Total Sale: Total value of the sale
-        - Sale Date: The date of the sale (DD-MM-YYYY)
-        - Sales Channel: How the sale was made (Online, Retail, Wholesale, Direct)
-        - Order ID: Unique identifier for the order
-        """,
-
+        "dataset_path": dataset_path,
+        "cleaned_dataset_path": cleaned_dataset_path,
+        "dataset_context": dataset_context,
         "plan": [],
-
         "past_steps": [],
-
-        "final_report": None
+        "final_report": None,
     }
 
-    print("Starting Autonomous Data Analyst...\n")
+    print("\nStarting Autonomous Data Analyst...\n")
 
     final_state = graph.invoke(
         initial_state,
-        config={
-            "recursion_limit": 50
-        }
+        config={"recursion_limit": 50},
     )
+
     print("FINAL REPORT")
-
-
     print(final_state["final_report"])
 
 
