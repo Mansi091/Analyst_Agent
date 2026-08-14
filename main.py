@@ -16,7 +16,6 @@ def discover_dataset(path: str) -> str:
 
 
 def main():
-    # --- Step 1: Find CSV files in the data/ directory ---
     data_dir = "data"
     if not os.path.exists(data_dir):
         print(f"Error: '{data_dir}/' directory not found. Please create it and add a CSV file.")
@@ -27,7 +26,6 @@ def main():
         print(f"Error: No CSV files found in '{data_dir}/'.")
         return
 
-    # --- Step 2: Let user pick a dataset ---
     print("Available datasets:")
     for i, f in enumerate(csv_files, 1):
         print(f"  {i}. {f}")
@@ -41,21 +39,17 @@ def main():
     dataset_filename = csv_files[choice - 1]
     dataset_path = f"data/{dataset_filename}"
 
-    # --- Step 3: Auto-detect schema ---
     print(f"\nReading schema from {dataset_path}...")
     dataset_context = discover_dataset(dataset_path)
     print(dataset_context)
 
-    # --- Step 4: Generate cleaned path ---
     name, ext = os.path.splitext(dataset_filename)
     cleaned_filename = f"{name}_cleaned{ext}"
     cleaned_dataset_path = f"data/{cleaned_filename}"
 
-    # --- Step 5: Get user question ---
     print()
     user_query = input("Ask a question about this dataset: ")
 
-    # --- Step 6: Run the agent ---
     initial_state = {
         "input": user_query,
         "dataset_path": dataset_path,

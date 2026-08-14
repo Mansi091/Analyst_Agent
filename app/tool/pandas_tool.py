@@ -16,10 +16,8 @@ def execute_pandas(code: str) -> str:
     """
 
     try:
-        # Resolve the absolute path of the data directory for Windows-Docker compatibility
         data_dir_abs_path = os.path.abspath("data")
 
-        # Prepend pandas import (the agent writes its own pd.read_csv)
         full_code = (
             "import pandas as pd\n"
             f"{code}"
@@ -30,63 +28,46 @@ def execute_pandas(code: str) -> str:
                 "docker",
                 "run",
 
-                # Delete container after execution
                 "--rm",
 
-                # No internet access
                 "--network",
                 "none",
 
-                # Resource limits
                 "--cpus",
                 "1",
                 "--memory",
                 "512m",
 
-                # Limit number of processes
                 "--pids-limit",
                 "64",
 
-                # Make container filesystem read-only
                 "--read-only",
 
-                # Drop Linux capabilities
                 "--cap-drop",
                 "ALL",
 
-                # Prevent privilege escalation
                 "--security-opt",
                 "no-new-privileges:true",
 
-                # Temporary filesystem
                 "--tmpfs",
                 "/tmp:rw,noexec,nosuid,size=64m",
 
-                # Allow stdin so we can send Python code
                 "-i",
 
-                # Mount the entire data directory, read-write
                 "-v", f"{data_dir_abs_path}:/sandbox/data",
             
-                # Sandbox image
                 "pandas-sandbox",
             ],
 
-            # Send generated Python code to the container
             input=full_code,
 
             text=True,
 
-            # Capture stdout/stderr
             capture_output=True,
 
-            # Host-side timeout
             timeout=10,
         )
 
-        # -----------------------------------------
-        # Container returned an error
-        # -----------------------------------------
 
         if result.returncode != 0:
             return (
@@ -94,9 +75,6 @@ def execute_pandas(code: str) -> str:
                 f"{result.stderr.strip()}"
             )
 
-        # -----------------------------------------
-        # Successful execution
-        # -----------------------------------------
 
         output = result.stdout.strip()
 
@@ -109,9 +87,6 @@ def execute_pandas(code: str) -> str:
 
         return output
 
-    # ---------------------------------------------
-    # Execution took too long
-    # ---------------------------------------------
 
     except subprocess.TimeoutExpired:
         return (
@@ -119,9 +94,6 @@ def execute_pandas(code: str) -> str:
             "The code exceeded the 10-second limit."
         )
 
-    # ---------------------------------------------
-    # Docker/tool error
-    # ---------------------------------------------
 
     except Exception as e:
         return f"Sandbox tool error: {str(e)}"

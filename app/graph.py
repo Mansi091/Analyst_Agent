@@ -36,4 +36,11 @@ graph.add_conditional_edges(
     }
 )
 
-graph = graph.compile()
+from langgraph.checkpoint.memory import MemorySaver
+
+memory = MemorySaver()
+
+graph = graph.compile(
+    checkpointer=memory,
+    interrupt_before=["Executor"]
+)

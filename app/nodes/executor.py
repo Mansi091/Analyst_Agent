@@ -96,7 +96,19 @@ Rules:
                 )
             continue
 
-        final_answer = response.content
+        if isinstance(response.content, str):
+            final_answer = response.content
+        elif isinstance(response.content, list):
+            texts = []
+            for part in response.content:
+                if isinstance(part, dict) and "text" in part:
+                    texts.append(part["text"])
+                else:
+                    texts.append(str(part))
+            final_answer = "\n".join(texts)
+        else:
+            final_answer = str(response.content) if response.content else "No response generated."
+
         break
 
     print("EXECUTOR: Step complete.")
