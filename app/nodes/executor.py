@@ -126,12 +126,14 @@ Rules:
                         code,
                     )
                     if authorization.get("status") != "succeeded":
-                        tool_result = (
-                            "AIAuth did not authorize Pandas execution: "
-                            f"{authorization.get('reason', authorization.get('status', 'unknown'))}"
+                        reason = authorization.get(
+                            "reason", authorization.get("status", "unknown")
                         )
-                    else:
-                        tool_result = tool.invoke(tool_call["args"])
+                        raise RuntimeError(
+                            f"AIAuth did not authorize Pandas execution: {reason}"
+                        )
+
+                    tool_result = tool.invoke(tool_call["args"])
 
                     print(f"SANDBOX OUTPUT:\n{tool_result}\n")
 
