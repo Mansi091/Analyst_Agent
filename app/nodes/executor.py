@@ -35,7 +35,7 @@ def authorize_pandas_execution(dataset_path: str, code: str) -> dict:
             "passport": passport,
             "capability": "execute_pandas",
             "resource": dataset_path,
-            "payload": {"code": code},
+            "payload": {"code": code, "dataset_path": os.path.abspath(dataset_path)},
             "idempotency_key": f"analyst-pandas-{os.urandom(16).hex()}",
         }).encode("utf-8"),
         headers={"Content-Type": "application/json"},
@@ -133,7 +133,9 @@ Rules:
                             f"AIAuth did not authorize Pandas execution: {reason}"
                         )
 
-                    tool_result = tool.invoke(tool_call["args"])
+                    tool_result = authorization.get("execution", {}).get(
+                        "message", authorization.get("reason", "No sandbox output returned")
+                    )
 
                     print(f"SANDBOX OUTPUT:\n{tool_result}\n")
 
