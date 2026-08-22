@@ -1,3 +1,8 @@
+import json
+import os
+import urllib.error
+import urllib.request
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from dotenv import load_dotenv
@@ -16,6 +21,37 @@ llm = ChatGoogleGenerativeAI(
 )
 
 llm_with_tools = llm.bind_tools([execute_pandas])
+
+
+def authorize_pandas_execution(dataset_path: str, code: str) -> dict:
+    """Ask AIAuth for permission before running generated code."""
+    passport = os.getenv("ANALYST_EXECUTOR_PASSPORT")
+    if not passport:
+        return {"status": "failed", "reason": "ANALYST_EXECUTOR_PASSPORT is not configured"}
+
+    request = urllib.request.Request(
+        f"{os.getenv('AI_AUTH_URL', 'http://localhost:8080').rstrip('/')}/actions",
+        data=json.dumps({
+            "passport": passport,
+            "capability": "execute_pandas",
+            "resource": dataset_path,
+            "payload": {"code": code},
+            "idempotency_key": f"analyst-pandas-{os.urandom(16).hex()}",
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")
+        return {"status": "failed", "reason": f"AIAuth returned HTTP {error.code}: {detail}"}
+    except (urllib.error.URLError, TimeoutError) as error:
+        return {"status": "failed", "reason": f"AIAuth unavailable: {error}"}
+    except json.JSONDecodeError:
+        return {"status": "failed", "reason": "AIAuth returned invalid JSON"}
 
 
 def executor_node(state: AnalystState):
@@ -81,10 +117,21 @@ Rules:
                 else:
                     print("EXECUTOR: Running Pandas Code...")
                     print("-" * 40)
-                    print(tool_call["args"].get("code", ""))
+                    code = tool_call["args"].get("code", "")
+                    print(code)
                     print("-" * 40)
 
-                    tool_result = tool.invoke(tool_call["args"])
+                    authorization = authorize_pandas_execution(
+                        state["cleaned_dataset_path"],
+                        code,
+                    )
+                    if authorization.get("status") != "succeeded":
+                        tool_result = (
+                            "AIAuth did not authorize Pandas execution: "
+                            f"{authorization.get('reason', authorization.get('status', 'unknown'))}"
+                        )
+                    else:
+                        tool_result = tool.invoke(tool_call["args"])
 
                     print(f"SANDBOX OUTPUT:\n{tool_result}\n")
 
